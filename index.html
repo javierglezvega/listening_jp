@@ -828,6 +828,8 @@
     const qTransJa = document.getElementById("q-trans-ja");
     const qTransEs = document.getElementById("q-trans-es");
     const qImage = document.getElementById("q-image");
+	
+	const cardBody = document.querySelector(".card-body"); /*ESTO TAMBIÉN LO AÑADÍ PARA EL SCROLL-UP*/
 
     const optionButtons = [
       document.getElementById("opt-0"),
@@ -872,7 +874,14 @@
 
       showQuestionScreen();
       updateCounter();
-
+	  
+	  /*ESTO ES LO QUE AÑADÍ PARA EL SCROLL-UP*/
+	  if (cardBody) {
+	      cardBody.scrollTop = 0;
+	    }
+		window.scrollTo(0, 0);
+		/*HASTA AQUÍ*/
+	  
       qTitle.textContent = q.title || `Listen ${q.code || index + 1}`;
       qSubtitle.textContent = q.code ? `ID: ${q.code}` : "";
 
