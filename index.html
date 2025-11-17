@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Listenings JLPT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    /* --------- RESET SENCILLO --------- */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: #f5f5f5;
+      color: #222;
+    }
+    button {
+      font: inherit;
+    }
+
+    /* --------- ESTRUCTURA GENERAL --------- */
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 0.75rem 1rem;
+      background: #ffffff;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    header .subtitle {
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0.75rem;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* --------- PANTALLA INICIO (GRID) --------- */
+    #screen-home {
+      display: block;
+    }
+    #screen-question {
+      display: none;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .grid button {
+      padding: 0.75rem 0.25rem;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      text-align: center;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease,
+        background 0.08s ease;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .grid button:active {
+      transform: scale(0.97);
+      box-shadow: 0 0 0 1px #ddd;
+      background: #f0f0f0;
+    }
+
+    /* --------- “TARJETA” DE ESTUDIO --------- */
+    .card {
+      background: #ffffff;
+      border-radius: 1rem;
+      padding: 0.75rem;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 3.5rem); /* casi toda la pantalla */
+    }
+
+    .card-header {
+      margin-bottom: 0.5rem;
+    }
+
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 400;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-subtitle {
+      font-size: 0.8rem;
+      color: #666;
+	  display: none;
+    }
+
+    .card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      overflow-y: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .field-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 0.15rem;
+    }
+
+	/* ---- Enunciados ---- */
+
+	/* Enunciado en japonés: más grande + negrita */
+	#q-prompt-ja {
+	  font-size: 1.25rem;
+	  font-weight: 700;
+	  line-height: 1.6;
+	  margin-bottom: 0.75rem;
+	}
+
+	/* Enunciado en español: más grande + normal */
+	#q-prompt-es {
+	  font-size: 1.15rem;
+	  font-weight: 400;
+	  line-height: 1.6;
+	  margin-bottom: 1rem;
+	}
+
+	/* ---- Transcripciones ---- */
+
+	/* Transcripción en japonés: un poco más pequeña que el enunciado + negrita */
+	#q-trans-ja {
+	  font-size: 1rem;
+	  font-weight: 400;
+	  line-height: 1.6;
+	  margin-top: 0.5rem;
+	  margin-bottom: 0.5rem;
+	}
+
+	/* Transcripción en español: un poco más pequeña + normal */
+	#q-trans-es {
+	  font-size: 1rem;
+	  font-weight: 400;
+	  line-height: 1.6;
+	  margin-bottom: 1rem;
+	}
+
+	/* ---- Elimina cajas visuales de los textos ---- */
+	.field-box {
+	  background: transparent;
+	  border: none;
+	  padding: 0;
+	  white-space: pre-wrap;
+	}
+
+    .field-box.ja {
+      font-family: "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    }
+
+    .audio-box {
+		padding: 0;             /* sin margen interno */
+		  background: transparent; /* sin fondo */
+		  border: none;            /* sin borde */
+		  border-radius: 0;        /* sin esquinas */
+    }
+
+    .audio-box audio {
+      width: 100%;
+    }
+
+    .image-box {
+      border-radius: 0.5rem;
+      overflow: hidden;
+      background: #f0f0f0;
+      border: 1px solid #e4e4e4;
+    }
+
+    .image-box img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* --------- OPCIONES DE RESPUESTA --------- */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-top: 0.25rem;
+    }
+
+    .option-btn {
+      width: 100%;
+      padding: 0.6rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.1s ease, border-color 0.1s ease,
+        transform 0.08s ease;
+    }
+
+    .option-btn span {
+      display: inline-block;
+      margin-right: 0.4rem;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    .option-btn:active {
+      transform: scale(0.98);
+    }
+
+    .option-btn.correct {
+      background: #e2f7e6;
+      border-color: #47b36e;
+      color: #16532c;
+    }
+
+    .option-btn.incorrect {
+      background: #ffe3e3;
+      border-color: #e04848;
+      color: #7a1c1c;
+    }
+
+    .option-btn.disabled {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    /* --------- FOOTER DE NAVEGACIÓN --------- */
+    .card-footer {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .nav-btn {
+      flex: 1;
+      padding: 0.6rem;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.1s ease, transform 0.08s ease;
+    }
+
+    .nav-btn:active {
+      transform: scale(0.98);
+    }
+
+    .nav-btn.back {
+      background: #e0e0e0;
+      color: #222;
+    }
+
+    .nav-btn.next {
+      background: #111827;
+      color: #f9fafb;
+    }
+	
+	.trans-separator {
+	  border: none;
+	  border-top: 1px solid #ddd;
+	  margin: 0.5rem 0 1rem 0;
+	}
+
+    /* --------- UTILIDADES --------- */
+    .hidden {
+      display: none !important;
+    }
+
+    @media (min-width: 768px) {
+      .card {
+        padding: 1rem;
+        border-radius: 1.25rem;
+      }
+      .card-title {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>JLPT Listening</h1>
+        <div class="subtitle">Práctica de audios</div>
+      </div>
+      <div id="current-counter" class="subtitle"></div>
+    </header>
+
+    <main>
+      <!-- PANTALLA DE INICIO -->
+      <section id="screen-home">
+        <div class="field-label">Selecciona un listening:</div>
+        <div id="question-grid" class="grid">
+          <!-- Botones generados por JS -->
+        </div>
+      </section>
+
+      <!-- PANTALLA DE ESTUDIO -->
+      <section id="screen-question">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title" id="q-title">リスニング 001</div>
+            <div class="card-subtitle" id="q-subtitle"></div>
+          </div>
+
+          <div class="card-body">
+            <!-- Enunciado japonés -->
+            <div id="block-prompt-ja">
+              <div id="q-prompt-ja" class="field-box ja"></div>
+            </div>
+
+            <!-- Enunciado español -->
+            <div id="block-prompt-es">
+              <div id="q-prompt-es" class="field-box"></div>
+            </div>
+
+            <!-- Audio -->
+            <div id="block-audio" class="audio-box">
+              <audio id="q-audio" controls></audio>
+            </div>
+
+            <!-- Transcripción japonés -->
+            <div id="block-trans-ja">
+              <div id="q-trans-ja" class="field-box ja"></div>
+            </div>
+			
+			<hr class="trans-separator">
+			
+            <!-- Transcripción español -->
+            <div id="block-trans-es">
+              <div id="q-trans-es" class="field-box"></div>
+            </div>
+
+            <!-- Imagen -->
+            <div id="block-image" class="image-box">
+              <img id="q-image" alt="Imagen del listening" />
+            </div>
+
+            <!-- Opciones -->
+            <div id="block-options">
+              <div class="options">
+                <button class="option-btn" id="opt-0"><span>A</span><span class="text"></span></button>
+                <button class="option-btn" id="opt-1"><span>B</span><span class="text"></span></button>
+                <button class="option-btn" id="opt-2"><span>C</span><span class="text"></span></button>
+                <button class="option-btn" id="opt-3"><span>D</span><span class="text"></span></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Navegación inferior -->
+          <div class="card-footer">
+            <button class="nav-btn back" id="btn-back-home">Inicio</button>
+            <button class="nav-btn next" id="btn-next">Siguiente</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    /* =========================================================
+       1) AQUÍ DEFINES TUS PREGUNTAS / LISTENINGS
+       ---------------------------------------------------------
+       Cada objeto representa un audio/pregunta.
+
+       Campos recomendados:
+
+       - id: número interno (1, 2, 3...)
+       - code: cadena que se mostrará en el botón (p.ej. "001")
+       - title: título en la pantalla de estudio (p.ej. "リスニング 001")
+       - promptJa: enunciado en japonés
+       - promptEs: enunciado en español
+       - audio: ruta al archivo de audio (o "" si no hay)
+       - transcriptJa: transcripción del audio en japonés
+       - transcriptEs: transcripción del audio en español
+       - image: ruta a la imagen (o "" si no hay)
+       - options: array con hasta 4 textos de opciones
+       - correctIndex: índice de la opción correcta (0, 1, 2 o 3)
+         (asegúrate de que no apunte a una opción vacía)
+
+       Si dejas un campo como "", esa parte no se mostrará.
+    ========================================================== */
+
+    const questions = [
+      {
+        id: 1,
+        code: "001",
+        title: "リスニング 001",
+        promptJa: "問題１では、はじめに質問を聞いてください。それから、話を聞いて、問題用紙の１から４の中から、一番いいものを一つ選んでください。",
+        promptEs: "En la pregunta 1, primero escuche la pregunta. Después, escuche la conversación y elija la mejor opción entre 1 y 4 del cuadernillo.",
+        audio: "audios/001.mp3",
+        transcriptJa:
+          "問題１\n問題１では、はじめに質問を聞いてください。\nそれから、話を聞いて、問題用紙の１から４の中から、一番いいものを一つ選んでください。\n\nでは、練習しましょう。\n\n家で女の人が男の人と話しています。\n女の人は男の人に何を出しますか。\n\n「今日は寒いですね。温かいものを飲みませんか。」\n「ありがとうございます。コーヒー、紅茶、あとお茶もありますけど。」\n「じゃあ、紅茶をお願いします。」\n「砂糖やミルクは入れますか。」\n「あ、はい。」\n\n女の人は男の人に何を出しますか。\n\n一番いいものは３番です。\n\n回答用紙の問題１の例のところを見てください。\n一番いいものは３番ですから、答えはこのように書きます。\n\nでは、はじめます。",
+        transcriptEs:
+          "Pregunta 1\nEn la pregunta 1, primero escuche la pregunta.\nDespués, escuche la conversación y elija la mejor opción entre 1 y 4 del cuadernillo.\n\nBien, hagamos un ejemplo.\n\nEn casa, una mujer está hablando con un hombre.\n¿Qué le ofrece la mujer al hombre?\n\n«Hoy hace frío. ¿Quiere beber algo caliente?»\n«Muchas gracias. Tenemos café, té negro y también té verde.»\n«Entonces, té negro, por favor.»\n«¿Le pongo azúcar o leche?»\n«Ah, sí.»\n\n¿Qué le ofrece la mujer al hombre?\n\nLa mejor respuesta es la opción 3.\n\nMire el ejemplo de la pregunta 1 en la hoja de respuestas.\nComo la mejor opción es la 3, la respuesta se escribe así.\n\nBien, comencemos.",
+        image: "img/001.png",
+        options: [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        correctIndex: 2
+      },
+      {
+        id: 2,
+        code: "002",
+        title: "リスニング 002",
+        promptJa: "１番",
+        promptEs: "Nº 1",
+        audio: "audios/002.mp3",
+        transcriptJa: "１番\n旅行会社の人が学生に話しています。\n学生ははじめに何をしますか。\n\n「さくら日本語学校のみなさん、ここに来てください。\n今からみんなで写真を撮ります。\n写真を撮ったあとはフリータイムです。\nご飯を食べたり、お寺を見たり、買い物をしたり、好きなことをしてください。\n２時にまたここへ来てください。\nでは、写真を撮りましょう。」\n\n学生ははじめに何をしますか。",
+        transcriptEs: "N.º 1\nUna persona de la agencia de viajes está hablando con estudiantes.\n¿Qué hacen los estudiantes primero?\n\n«Estudiantes de la escuela de japonés Sakura, por favor, vengan aquí.\nAhora vamos a tomarnos una foto todos juntos.\nDespués de la foto será tiempo libre.\nPodéis comer, visitar templos, ir de compras… lo que queráis.\nA las 2, volved aquí.\nBien, saquémonos la foto.»\n\nPregunta:\n¿Qué hacen los estudiantes primero?",
+        image: "img/002.png",
+        options: ["1", "2", "3", "4"],
+        correctIndex: 1
+      },
+      {
+        id: 3,
+        code: "003",
+        title: "リスニング 003",
+        promptJa: "２番",
+        promptEs: "Nº 2",
+        audio: "audios/003.mp3",
+        transcriptJa: "２番\nデパートで男の人と店の人が話しています。\n男の人は何階に行きますか。\n\n「あのー、すみません。メガネ売り場はどこですか。」\n「６階でございます。」\n「６階ですね。あ、ここは何階ですか。」\n「２階でございます。」\n「あ、どうも。」\n\n男の人は何階に行きますか。",
+        transcriptEs: "N.º 2\nEn unos grandes almacenes, un hombre está hablando con un empleado.\n¿A qué piso va el hombre?\n\n— Disculpe… ¿dónde está la sección de gafas?\n— En la sexta planta.\n— La sexta, ¿verdad? Ah, ¿y este piso cuál es?\n— La segunda planta.\n— Gracias.\n\nPregunta:\n¿A qué piso va el hombre?",
+        image: "",
+        options: ["2かい", "4かい", "6かい", "8かい"],
+        correctIndex: 2
+      },
+      {
+        id: 4,
+        code: "004",
+        title: "リスニング 004",
+        promptJa: "3番",
+        promptEs: "Nº 3",
+        audio: "audios/004.mp3",
+        transcriptJa: "教室で先生が話しています。\n学生は明日どの本を持ってきますか。\n\n「明日から日本語のクラスが始まります。\nこの日本語１は毎日使いますから忘れないでください。\n２は今は使いません。\nそれから明日は火曜日ですから漢字の授業もあります。\n漢字の本も持ってきてください。」\n\n「先生、この本は？」\n「その本は練習に使う本です。家で使ってください。」\n\n学生は明日どの本を持ってきますか。",
+        transcriptEs: "En el aula, un profesor está hablando.\n¿Qué libros deben traer los estudiantes mañana?\n\n«Mañana empieza la clase de japonés.\nEste libro Japonés 1 lo usaremos todos los días, así que no lo olviden.\nEl Japonés 2 no lo usaremos por ahora.\nAdemás, mañana es martes, así que tendremos clase de kanji.\nTambién traigan el libro de kanji.»\n\n— Profesor, ¿y este libro?\n— Ese es un libro para practicar. Úsenlo en casa.\n\nPregunta:\n¿Qué libros deben traer los estudiantes mañana?",
+        image: "img/004.png",
+        options: ["1", "2", "3", "4"],
+        correctIndex: 1
+      },
+      {
+        id: 5,
+        code: "005",
+        title: "リスニング 005",
+        promptJa: "４番",
+        promptEs: "Nº 4",
+        audio: "audios/005.mp3",
+        transcriptJa: "４番\n女の人と男の人が話しています。\n男の人は何をしますか。\n\n「この部屋、暑いですね。」\n「そうですね。窓を開けましょうか。」\n「いえ、今日は風が強いですから、\n窓は開けないでください。エアコンをつけましょう。」\n「そうですね。」",
+        transcriptEs: "N.º 4\nUna mujer y un hombre están hablando.\n¿Qué hará el hombre?\n\n— Esta habitación está caliente, ¿verdad?\n— Sí. ¿Abro la ventana?\n— No, hoy hace mucho viento, así que no la abra. Encendamos el aire acondicionado.\n— De acuerdo.",
+        image: "img/005.png",
+        options: ["1", "2", "3", "4"],
+        correctIndex: 2
+      },
+      {
+        id: 6,
+        code: "006",
+        title: "リスニング 006",
+        promptJa: "5番",
+        promptEs: "Nº 5",
+        audio: "audios/003.mp3",
+        transcriptJa: "男の学生と女の学生が話しています。\n女の学生はどのカーテンを買いますか。\n\n「明日は何をしますか。」\n「カーテンを買います。」\n「カーテンを？ 小さいカーテンですか。」\n「いえ、大きいカーテンです。\n私の部屋に最初からありましたが、あまり好きなデザインではありませんでした。\n花の絵で。」\n「そうでしたか。どんなカーテンにしますか。」\n「白で、何も書いていないものにします。」\n\n女の学生はどのカーテンを買いますか。",
+        transcriptEs: "Un estudiante y una estudiante están conversando.\n¿Qué cortina comprará la estudiante?\n\n— ¿Qué harás mañana?\n— Compraré una cortina.\n— ¿Una cortina? ¿Pequeña?\n— No, grande.\nHabía una en mi habitación desde el principio, pero no me gustaba mucho el diseño.\nEra con dibujos de flores.\n— Ya veo. ¿Qué tipo de cortina comprarás?\n— Blanca, sin nada dibujado.\n\nPregunta:\n¿Qué cortina comprará la estudiante?",
+        image: "img/006.png",
+        options: ["1", "2", "3", "4"],
+        correctIndex: 0
+      },
+      {
+        id: 7,
+        code: "007",
+        title: "リスニング 007",
+        promptJa: "6番",
+        promptEs: "Nº 6",
+        audio: "audios/007.mp3",
+        transcriptJa: "車の後ろで男の人と女の人が話しています。\n男の人はどのカバンを取りますか。\n\n「ハラさんのカバンはどれ。」\n「その白いの。」\n「これ。」\n「その横の。」\n「ああ、これ。結構大きいね。」\n\n男の人はどのカバンを取りますか。",
+        transcriptEs: "Un hombre y una mujer están hablando detrás del coche.\n¿Qué bolso recoge el hombre?\n\n— ¿Cuál es tu bolso, Hara?\n— El blanco.\n— ¿Este?\n— El de al lado.\n— Ah, este. Es bastante grande, ¿eh?\n\nPregunta:\n¿Qué bolso coge el hombre?",
+        image: "img/007.png",
+        options: ["1", "2", "3", "4"],
+        correctIndex: 1
+      },
+      {
+        id: 8,
+        code: "008",
+        title: "リスニング 008",
+        promptJa: "7番",
+        promptEs: "Nº 7",
+        audio: "audios/008.mp3",
+        transcriptJa: "７番\n駅で女の人と駅員が話しています。\n女の人は何番ホームの電車に乗りますか。\n\n「すみません、一番ホームの電車は京都に行きますか。」\n「京都ですか。いえ、一番ホームと二番ホームは大阪行きです。\n京都に行くのは三番と四番です。」\n「三番と四番ですね。」\n「あ、でも今日は日曜日ですから、四番ホームの電車は京都には止まりません。」\n「そうですか、わかりました。」\n\n女の人は何番ホームの電車に乗りますか。",
+        transcriptEs: "N.º 7\nEn una estación, una mujer está hablando con un empleado.\n¿A qué andén subirá la mujer?\n\n— Disculpe, ¿el tren del andén 1 va a Kioto?\n— ¿A Kioto? No, los andenes 1 y 2 van a Osaka.\nLos que van a Kioto son los andenes 3 y 4.\n— Los andenes 3 y 4, ¿verdad?\n— Ah, pero hoy es domingo, así que el tren del andén 4 no para en Kioto.\n— Entiendo. Gracias.",
+        image: "",
+        options: ["１ばんホームの　でんしゃ", "２ばんホームの　でんしゃ", "３ばんホームの　でんしゃ", "４ばんホームの　でんしゃ"],
+        correctIndex: 2
+      },
+      {
+        id: 9,
+        code: "009",
+        title: "リスニング 009",
+        promptJa: "もんだい２では、はじめに　しつもんを　きいて　ください。\nそれから、はなしを　きいて、もんだいようしの　１から　４の　なかから、いちばん　いい　ものを　ひとつ　えらんで　ください。",
+        promptEs: "En la pregunta 2, primero escuche la pregunta.\nDespués, escuche la conversación y elija la mejor opción entre 1 y 4 del cuadernillo.",
+        audio: "audios/009.mp3",
+        transcriptJa: "問題２では、はじめに質問を聞いてください。\nそれから、話を聞いて、問題用紙の１から４の中から、一番いいものを一つ選んでください。\n\nでは、練習しましょう。\n\n女の学生と男の学生が話しています。\n２人はいつプレゼントを買いに行きますか。\n\n「来週、さくらさんの誕生日プレゼントを買いに行きませんか。」\n「そうですね。５日が誕生日ですから、３日か４日に行きましょう。」\n「あ、ちょっと待ってください。私は３日と４日はアルバイトがあります。２日はだめですか。」\n「いいですよ。じゃあ、授業が終わった後に行きましょう。」\n\n２人はいつプレゼントを買いに行きますか。\n\n一番いいものは１番です。\n\n回答用紙の問題２の例のところを見てください。\n一番いいものは１番ですから、答えはこのように書きます。\n\nでは、始めます。",
+        transcriptEs: "En la pregunta 2, primero escuche la pregunta.\nDespués, escuche la conversación y elija la mejor opción entre 1 y 4 del cuadernillo.\n\nVamos a practicar.\n\nUna estudiante y un estudiante están hablando.\n¿Cuándo irán a comprar el regalo?\n\n— ¿La próxima semana vamos a comprar el regalo de cumpleaños de Sakura?\n— Vale. Su cumpleaños es el día 5, así que vayamos el día 3 o el 4.\n— Ah, un momento. El día 3 y el 4 trabajo. ¿No puede ser el día 2?\n— Sí, claro. Entonces vayamos después de clase.\n\n¿Cuando van los dos a comprar el regalo?\n\nLa mejor opción es la n.º 1.\n\nMiren el ejemplo de la pregunta 2 en la hoja de respuestas.\nComo la mejor opción es la n.º 1, la respuesta se escribe así.\n\nBien, comencemos.",
+        image: "",
+        options: ["ふつか", "みっか", "よっか", "いつか"],
+        correctIndex: 0
+      },
+
+      // ↓↓↓ A partir de aquí vas añadiendo tus ~250 preguntas ↓↓↓
+      /*
+      {
+        id: 3,
+        code: "003",
+        title: "リスニング 003",
+        promptJa: "",
+        promptEs: "",
+        audio: "",
+        transcriptJa: "",
+        transcriptEs: "",
+        image: "",
+        options: ["", "", "", ""],
+        correctIndex: 0
+      },
+      */
+    ];
+
+    /* =========================================================
+       2) LÓGICA DE LA APLICACIÓN
+    ========================================================== */
+
+    let currentIndex = 0; // índice dentro del array 'questions'
+
+    const screenHome = document.getElementById("screen-home");
+    const screenQuestion = document.getElementById("screen-question");
+    const grid = document.getElementById("question-grid");
+    const currentCounter = document.getElementById("current-counter");
+
+    // Elementos de la pantalla de estudio
+    const qTitle = document.getElementById("q-title");
+    const qSubtitle = document.getElementById("q-subtitle");
+
+    const blockPromptJa = document.getElementById("block-prompt-ja");
+    const blockPromptEs = document.getElementById("block-prompt-es");
+    const blockAudio = document.getElementById("block-audio");
+    const blockTransJa = document.getElementById("block-trans-ja");
+    const blockTransEs = document.getElementById("block-trans-es");
+    const blockImage = document.getElementById("block-image");
+    const blockOptions = document.getElementById("block-options");
+
+    const qPromptJa = document.getElementById("q-prompt-ja");
+    const qPromptEs = document.getElementById("q-prompt-es");
+    const qAudio = document.getElementById("q-audio");
+    const qTransJa = document.getElementById("q-trans-ja");
+    const qTransEs = document.getElementById("q-trans-es");
+    const qImage = document.getElementById("q-image");
+
+    const optionButtons = [
+      document.getElementById("opt-0"),
+      document.getElementById("opt-1"),
+      document.getElementById("opt-2"),
+      document.getElementById("opt-3")
+    ];
+
+    const btnBackHome = document.getElementById("btn-back-home");
+    const btnNext = document.getElementById("btn-next");
+
+    // Crear la rejilla de botones en la pantalla de inicio
+    function renderGrid() {
+      grid.innerHTML = "";
+      questions.forEach((q, index) => {
+        const btn = document.createElement("button");
+        btn.textContent = q.code || `Q${index + 1}`;
+        btn.addEventListener("click", () => {
+          openQuestion(index);
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    // Mostrar pantalla de inicio
+    function showHome() {
+      screenHome.style.display = "block";
+      screenQuestion.style.display = "none";
+      currentCounter.textContent = "";
+    }
+
+    // Mostrar pantalla de pregunta
+    function showQuestionScreen() {
+      screenHome.style.display = "none";
+      screenQuestion.style.display = "block";
+    }
+
+    // Cargar una pregunta concreta
+    function openQuestion(index) {
+      currentIndex = index;
+      const q = questions[index];
+
+      showQuestionScreen();
+      updateCounter();
+
+      qTitle.textContent = q.title || `Listen ${q.code || index + 1}`;
+      qSubtitle.textContent = q.code ? `ID: ${q.code}` : "";
+
+      // Enunciados
+      if (q.promptJa && q.promptJa.trim() !== "") {
+        blockPromptJa.classList.remove("hidden");
+        qPromptJa.textContent = q.promptJa;
+      } else {
+        blockPromptJa.classList.add("hidden");
+      }
+
+      if (q.promptEs && q.promptEs.trim() !== "") {
+        blockPromptEs.classList.remove("hidden");
+        qPromptEs.textContent = q.promptEs;
+      } else {
+        blockPromptEs.classList.add("hidden");
+      }
+
+      // Audio
+      if (q.audio && q.audio.trim() !== "") {
+        blockAudio.classList.remove("hidden");
+        qAudio.src = q.audio;
+      } else {
+        blockAudio.classList.add("hidden");
+        qAudio.removeAttribute("src");
+      }
+
+      // Transcripciones
+      if (q.transcriptJa && q.transcriptJa.trim() !== "") {
+        blockTransJa.classList.remove("hidden");
+        qTransJa.textContent = q.transcriptJa;
+      } else {
+        blockTransJa.classList.add("hidden");
+        qTransJa.textContent = "";
+      }
+
+      if (q.transcriptEs && q.transcriptEs.trim() !== "") {
+        blockTransEs.classList.remove("hidden");
+        qTransEs.textContent = q.transcriptEs;
+      } else {
+        blockTransEs.classList.add("hidden");
+        qTransEs.textContent = "";
+      }
+
+      // Imagen
+      if (q.image && q.image.trim() !== "") {
+        blockImage.classList.remove("hidden");
+        qImage.src = q.image;
+      } else {
+        blockImage.classList.add("hidden");
+        qImage.removeAttribute("src");
+      }
+
+      // Opciones
+      const opts = q.options || [];
+      let visibleCount = 0;
+      for (let i = 0; i < optionButtons.length; i++) {
+        const btn = optionButtons[i];
+        const textSpan = btn.querySelector(".text");
+        const text = opts[i] || "";
+
+        if (text.trim() !== "") {
+          btn.classList.remove("hidden");
+          btn.classList.remove("correct", "incorrect", "disabled");
+          textSpan.textContent = text;
+          visibleCount++;
+        } else {
+          btn.classList.add("hidden");
+          btn.classList.remove("correct", "incorrect", "disabled");
+          textSpan.textContent = "";
+        }
+
+        // Actualizamos el “prefijo” A/B/C/D:
+        const labelSpan = btn.querySelector("span:first-child");
+        const labels = ["A", "B", "C", "D"];
+        labelSpan.textContent = labels[i] || "";
+      }
+
+      if (visibleCount === 0) {
+        blockOptions.classList.add("hidden");
+      } else {
+        blockOptions.classList.remove("hidden");
+      }
+
+      // Guardamos el índice correcto en un atributo de datos
+      blockOptions.dataset.correctIndex = q.correctIndex;
+
+      // Reactivamos eventos de respuesta
+      enableOptions();
+    }
+
+    function updateCounter() {
+      currentCounter.textContent = `${currentIndex + 1} / ${questions.length}`;
+    }
+
+    function enableOptions() {
+      optionButtons.forEach((btn, i) => {
+        btn.classList.remove("disabled", "correct", "incorrect");
+        // Quitamos cualquier listener previo para evitar duplicados
+        btn.replaceWith(btn.cloneNode(true));
+        optionButtons[i] = document.getElementById(`opt-${i}`);
+      });
+
+      // Volvemos a añadir los listeners
+      optionButtons.forEach((btn, i) => {
+        btn.addEventListener("click", () => handleOptionClick(i));
+      });
+    }
+
+    function disableOptions() {
+      optionButtons.forEach((btn) => {
+        btn.classList.add("disabled");
+      });
+    }
+
+    function handleOptionClick(index) {
+      const correctIndex = parseInt(blockOptions.dataset.correctIndex, 10);
+
+      optionButtons.forEach((btn, i) => {
+        btn.classList.remove("correct", "incorrect");
+      });
+
+      if (index === correctIndex) {
+        optionButtons[index].classList.add("correct");
+      } else {
+        optionButtons[index].classList.add("incorrect");
+        if (correctIndex >= 0 && correctIndex < optionButtons.length) {
+          optionButtons[correctIndex].classList.add("correct");
+        }
+      }
+
+      disableOptions();
+    }
+
+    // Botones de navegación inferior
+    btnBackHome.addEventListener("click", () => {
+      showHome();
+    });
+
+    btnNext.addEventListener("click", () => {
+      const nextIndex =
+        currentIndex + 1 < questions.length ? currentIndex + 1 : 0;
+      openQuestion(nextIndex);
+    });
+
+    // Inicialización
+    renderGrid();
+    showHome();
+  </script>
+</body>
+</html>
